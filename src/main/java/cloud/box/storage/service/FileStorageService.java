@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 public interface FileStorageService {
-    void saveFile(MultipartFile file, String owner) throws IOException;
-    Path getFilePath(String filename, String owner);
-    void deleteFile(String filename, String owner) throws IOException;
+    void saveFile(MultipartFile file, String owner, String filename) throws IOException;
+    Path getFilePath(String owner, String filename);
+    void deleteFile(String owner, String filename) throws IOException;
 }

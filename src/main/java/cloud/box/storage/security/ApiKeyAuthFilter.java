@@ -28,14 +28,19 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
-        String apiKey = request.getParameter("apiKey"); // or you can check header: request.getHeader("X-API-KEY")
+        // Check API key in query parameter or header
+        String apiKey = request.getParameter("apiKey");
+        if (apiKey == null) {
+            apiKey = request.getHeader("X-API-KEY");
+        }
+
         if (apiKey != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             User user = userRepository.findByApiKey(apiKey).orElse(null);
             if (user != null) {
-                // Authenticate user
+                // Authenticate user with email as principal
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
-                                user.getUsername(),
+                                user.getEmail(), // use email instead of username
                                 null,
                                 null // no roles for now
                         );

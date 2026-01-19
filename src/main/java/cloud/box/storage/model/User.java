@@ -18,7 +18,11 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String username;
+    private String name; // replaced username with name
+
+    @Column(unique = true, nullable = false)
+    private String email; // new email field, required and unique
+
     private String password;
     private String apiKey;
 
@@ -29,8 +33,9 @@ public class User {
         this.apiKey = UUID.randomUUID().toString(); // always generate
     }
 
-    public User(String username, String password) {
-        this.username = username;
+    public User(String name, String email, String password) {
+        this.name = name;
+        this.email = email;
         this.password = password;
         this.apiKey = UUID.randomUUID().toString();
     }

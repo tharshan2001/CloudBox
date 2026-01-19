@@ -7,52 +7,41 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.*;
-
 @Service
 public class FileStorageServiceImpl implements FileStorageService {
 
     private final Path storagePath;
 
-    public FileStorageServiceImpl(@Value("${storage.location}") String storageLocation) throws IOException {
-        storagePath = Paths.get(storageLocation);
-        if (!Files.exists(storagePath)) {
-            Files.createDirectories(storagePath);
-        }
+    public FileStorageServiceImpl(@Value("${storage.location}") String storageLocation)
+            throws IOException {
+
+        this.storagePath = Paths.get(storageLocation);
+        Files.createDirectories(storagePath);
     }
 
-    /**
-     * Save file in /storage/{owner}/ with unique name
-     * Does NOT overwrite existing files
-     */
     @Override
-    public void saveFile(MultipartFile file, String owner) throws IOException {
+    public void saveFile(MultipartFile file, String owner, String filename)
+            throws IOException {
+
         Path userFolder = storagePath.resolve(owner);
-        if (!Files.exists(userFolder)) {
-            Files.createDirectories(userFolder);
-        }
+        Files.createDirectories(userFolder);
 
-        // Create unique filename with timestamp
-        String uniqueFilename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        Path destination = userFolder.resolve(filename);
 
-        Path destination = userFolder.resolve(uniqueFilename);
-
-        // Save file
-        Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(
+                file.getInputStream(),
+                destination,
+                StandardCopyOption.REPLACE_EXISTING
+        );
     }
 
-    /**
-     * Get the file path for a given owner and filename
-     */
     @Override
-    public Path getFilePath(String filename, String owner) {
+    public Path getFilePath(String owner, String filename) {
         return storagePath.resolve(owner).resolve(filename);
     }
 
-    /**
-     * Delete file
-     */
     @Override
-    public void deleteFile(String filename, String owner) throws IOException {
-        Files.deleteIfExists(storagePath.resolve(owner).resolve(filename));
+    public void deleteFile(String owner, String filename) throws IOException {
+        Files.deleteIfExists(getFilePath(owner, filename));
     }
 }

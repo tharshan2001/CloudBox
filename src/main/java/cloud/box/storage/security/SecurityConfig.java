@@ -5,8 +5,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
 @Configuration
 public class SecurityConfig {
 
@@ -18,17 +21,20 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
+        http
+                .csrf(AbstractHttpConfigurer::disable) // disable CSRF for APIs
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()     // login/register
-                        .requestMatchers("/meta/**").permitAll()     // public streaming
-                        .anyRequest().authenticated()                // everything else requires auth
+                        .anyRequest().permitAll()  // allow all endpoints
                 )
-                // API key filter first
+                // Filters are optional now; keep them if you want JWT/API key support
                 .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                // then JWT filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }
