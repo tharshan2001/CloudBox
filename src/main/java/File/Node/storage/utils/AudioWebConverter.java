@@ -8,13 +8,13 @@ public class AudioWebConverter implements WebOptimizedConverter {
 
     @Override
     public void convert(File inputFile, File outputFile) throws IOException {
-        // Optional: Convert mp3 → AAC/OGG for web
-        // Can integrate FFmpeg similar to VideoWebConverter
+        // For now, just copy the file
+        // You can integrate FFmpeg for real conversion later
         Files.copy(inputFile.toPath(), outputFile.toPath());
     }
 
     @Override
     public String getTargetExtension() {
-        return "mp3";
+        return "mp3"; // all audio files will be saved as .mp3
     }
 }

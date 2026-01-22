@@ -1,7 +1,10 @@
 package File.Node.storage;
 
+import jakarta.annotation.PostConstruct;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import javax.imageio.ImageIO;
 
 @SpringBootApplication
 public class FileNodeApplication {
@@ -10,4 +13,9 @@ public class FileNodeApplication {
 		SpringApplication.run(FileNodeApplication.class, args);
 	}
 
+	@PostConstruct
+	public void initImageIO() {
+		ImageIO.scanForPlugins();
+		System.out.println(" ImageIO plugins loaded");
+	}
 }

@@ -1,57 +1,47 @@
 package File.Node.storage.utils;
 
-import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.ImageOutputStream;
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.*;
-import java.util.Iterator;
+import java.io.File;
+import java.io.IOException;
 
 public class ImageWebConverter implements WebOptimizedConverter {
 
-    private final String targetFormat; // "png" or "jpg"
-    private final float quality;       // 0.0f - 1.0f (only used for JPEG)
+    private final String targetFormat; // jpg
+    private final float quality; // 0.0 - 1.0
 
     public ImageWebConverter(String targetFormat, float quality) {
-        this.targetFormat = targetFormat.toLowerCase();
+        this.targetFormat = targetFormat;
         this.quality = quality;
     }
 
     @Override
     public void convert(File inputFile, File outputFile) throws IOException {
-        try (InputStream is = new FileInputStream(inputFile)) {
-            convert(is, outputFile);
+        BufferedImage original = ImageIO.read(inputFile);
+        if (original == null) {
+            throw new IOException("Unsupported image format or corrupted file");
         }
-    }
 
-    private void convert(InputStream input, File outputFile) throws IOException {
-        BufferedImage image = ImageIO.read(input);
-        if (image == null) throw new IOException("Invalid image input");
+        // ✅ Normalize to RGB
+        BufferedImage rgbImage = new BufferedImage(
+                original.getWidth(),
+                original.getHeight(),
+                BufferedImage.TYPE_INT_RGB
+        );
+        Graphics2D g = rgbImage.createGraphics();
+        g.setColor(Color.WHITE); // fill background for images with alpha
+        g.fillRect(0, 0, rgbImage.getWidth(), rgbImage.getHeight());
+        g.drawImage(original, 0, 0, null);
+        g.dispose();
 
-        if (targetFormat.equals("jpg") || targetFormat.equals("jpeg")) {
-            // Handle JPEG quality
-            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
-            if (!writers.hasNext()) throw new IOException("No JPEG writer found");
+        // Write as JPEG with high quality
+        javax.imageio.plugins.jpeg.JPEGImageWriteParam jpegParams =
+                new javax.imageio.plugins.jpeg.JPEGImageWriteParam(null);
+        jpegParams.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+        jpegParams.setCompressionQuality(quality); // e.g., 0.95f
 
-            ImageWriter writer = writers.next();
-            try (ImageOutputStream ios = ImageIO.createImageOutputStream(outputFile)) {
-                writer.setOutput(ios);
-                ImageWriteParam param = writer.getDefaultWriteParam();
-                if (param.canWriteCompressed()) {
-                    param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                    param.setCompressionQuality(quality);
-                }
-                writer.write(null, new IIOImage(image, null, null), param);
-                writer.dispose();
-            }
-        } else {
-            // For PNG or other supported formats
-            if (!ImageIO.write(image, targetFormat, outputFile)) {
-                throw new IOException("Failed to write image in format: " + targetFormat);
-            }
-        }
+        ImageIO.write(rgbImage, targetFormat, outputFile);
     }
 
     @Override

@@ -8,8 +8,15 @@ public class DocumentWebConverter implements WebOptimizedConverter {
 
     @Override
     public void convert(File inputFile, File outputFile) throws IOException {
-        // Optional: Convert DOCX → PDF or optimize PDF
-        Files.copy(inputFile.toPath(), outputFile.toPath());
+        String name = inputFile.getName().toLowerCase();
+        if (name.endsWith(".pdf")) {
+            // Already PDF, just copy
+            Files.copy(inputFile.toPath(), outputFile.toPath());
+        } else {
+            // For DOC/DOCX, ideally convert to PDF using Apache POI or LibreOffice
+            // For now, copy with .pdf extension as placeholder
+            Files.copy(inputFile.toPath(), outputFile.toPath());
+        }
     }
 
     @Override
@@ -17,4 +24,3 @@ public class DocumentWebConverter implements WebOptimizedConverter {
         return "pdf";
     }
 }
-

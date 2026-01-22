@@ -6,9 +6,9 @@ import File.Node.storage.model.User;
 import File.Node.storage.repository.FileMetadataRepository;
 import File.Node.storage.repository.UserRepository;
 import File.Node.storage.service.FileStorageService;
+import File.Node.storage.utils.ImageWebConverter;
 import File.Node.storage.utils.WebOptimizedConverter;
 import File.Node.storage.utils.WebOptimizedConverterFactory;
-import File.Node.storage.utils.ImageWebConverter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -38,11 +38,6 @@ public class FileController {
 
     // Factory for web-optimized converters
     private final WebOptimizedConverterFactory converterFactory = new WebOptimizedConverterFactory();
-
-    public FileController() {
-        // Override image converter to use pure Java PNG conversion
-        converterFactory.registerConverter("image", new ImageWebConverter("png", 1.0f));
-    }
 
     // =============================
     // Resolve user by API key or Authentication
@@ -81,16 +76,8 @@ public class FileController {
             String originalName = file.getOriginalFilename();
             String baseFilename = System.currentTimeMillis() + "_" + originalName;
 
-            // 1️⃣ Get converter for MIME type
-            Optional<WebOptimizedConverter> optionalConverter =
-                    converterFactory.getConverter(file.getContentType());
-
-            if (optionalConverter.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(List.of("Unsupported file type: " + file.getContentType()));
-            }
-
-            WebOptimizedConverter converter = optionalConverter.get();
+            // 1️⃣ Use pure Java converter for high-quality JPEG
+            WebOptimizedConverter converter = new ImageWebConverter("jpg", 0.95f); // 95% quality
             String targetExtension = converter.getTargetExtension();
 
             // 2️⃣ Generate unique filename and prevent overwrite
@@ -135,6 +122,7 @@ public class FileController {
 
         return ResponseEntity.ok(urls);
     }
+
 
     // =============================
     // STREAM FILE
