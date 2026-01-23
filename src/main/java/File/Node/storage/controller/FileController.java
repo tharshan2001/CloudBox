@@ -1,67 +1,48 @@
 package File.Node.storage.controller;
 
 import File.Node.storage.dto.FileDTO;
-import File.Node.storage.model.FileMetadata;
 import File.Node.storage.model.User;
-import File.Node.storage.repository.FileMetadataRepository;
-import File.Node.storage.repository.UserRepository;
-import File.Node.storage.service.FileStorageService;
-import File.Node.storage.utils.ImageWebConverter;
-import File.Node.storage.utils.WebOptimizedConverter;
-import File.Node.storage.utils.WebOptimizedConverterFactory;
+
+import File.Node.storage.utils.File.FileManagementService;
+import File.Node.storage.utils.File.FileStreamingService;
+import File.Node.storage.utils.File.FileUploadService;
+import File.Node.storage.utils.user.UserResolverService;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
 
 @RestController
 public class FileController {
 
-    @Autowired
-    private FileStorageService storageService;
+    private final UserResolverService userResolverService;
+    private final FileUploadService fileUploadService;
+    private final FileStreamingService fileStreamingService;
+    private final FileManagementService fileManagementService;
 
-    @Autowired
-    private FileMetadataRepository metadataRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    // Factory for web-optimized converters
-    private final WebOptimizedConverterFactory converterFactory = new WebOptimizedConverterFactory();
-
-    // =============================
-    // Resolve user by API key or Authentication
-    // =============================
-    private User resolveUser(Authentication auth, String apiKey) {
-        if (apiKey != null) {
-            return userRepository.findByApiKey(apiKey)
-                    .orElseThrow(() -> new RuntimeException("Invalid API Key"));
-        }
-        if (auth != null) {
-            return userRepository.findByEmail(auth.getName())
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-        }
-        throw new RuntimeException("No authentication provided");
+    public FileController(UserResolverService userResolverService,
+                          FileUploadService fileUploadService,
+                          FileStreamingService fileStreamingService,
+                          FileManagementService fileManagementService) {
+        this.userResolverService = userResolverService;
+        this.fileUploadService = fileUploadService;
+        this.fileStreamingService = fileStreamingService;
+        this.fileManagementService = fileManagementService;
     }
 
     // =============================
-    // UPLOAD FILES WITH PRE-CONVERSION
+    // UPLOAD FILES
     // =============================
     @PostMapping("/upload")
     public ResponseEntity<List<String>> uploadMultiple(
             @RequestParam("files") MultipartFile[] files,
             @RequestParam(required = false) String apiKey,
-            Authentication auth) throws IOException {
+            Authentication auth) throws IOException, InterruptedException {
 
         if (files == null || files.length == 0)
             return ResponseEntity.badRequest().body(List.of("No files uploaded"));
@@ -69,109 +50,48 @@ public class FileController {
         if (files.length > 10)
             return ResponseEntity.badRequest().body(List.of("Max 10 files allowed"));
 
-        User user = resolveUser(auth, apiKey);
-        List<String> urls = new ArrayList<>();
+        User user = userResolverService.resolveUser(auth, apiKey);
 
-        for (MultipartFile file : files) {
-            String originalName = file.getOriginalFilename();
-            String baseFilename = System.currentTimeMillis() + "_" + originalName;
-
-            // 1️⃣ Use pure Java converter for high-quality JPEG
-            WebOptimizedConverter converter = new ImageWebConverter("jpg", 0.95f); // 95% quality
-            String targetExtension = converter.getTargetExtension();
-
-            // 2️⃣ Generate unique filename and prevent overwrite
-            String convertedFilename = baseFilename + "." + targetExtension;
-            Path convertedPath = storageService.getFilePath(String.valueOf(user.getId()), convertedFilename);
-            while (Files.exists(convertedPath)) {
-                convertedFilename = System.currentTimeMillis() + "_" + originalName + "." + targetExtension;
-                convertedPath = storageService.getFilePath(String.valueOf(user.getId()), convertedFilename);
-            }
-
-            // 3️⃣ Convert file BEFORE saving
-            try {
-                File tempFile = File.createTempFile("upload-", null);
-                file.transferTo(tempFile); // save MultipartFile to temp
-                converter.convert(tempFile, convertedPath.toFile());
-                tempFile.delete(); // cleanup temp
-            } catch (Exception e) {
-                e.printStackTrace();
-                return ResponseEntity.status(500)
-                        .body(List.of("Conversion failed for file: " + originalName));
-            }
-
-            // 4️⃣ Save metadata for optimized file
-            String fileKey = UUID.randomUUID().toString();
-            FileMetadata meta = new FileMetadata(
-                    originalName,
-                    user.getId() + "/" + convertedFilename,
-                    fileKey,
-                    LocalDateTime.now(),
-                    user
-            );
-            metadataRepository.save(meta);
-
-            // 5️⃣ Generate public URL
-            String url = ServletUriComponentsBuilder
-                    .fromCurrentContextPath()
-                    .path("/meta/")
-                    .path(fileKey)
-                    .toUriString();
-            urls.add(url);
+        // Convert MultipartFile to temporary File[]Ï
+        File[] tempFiles = new File[files.length];
+        String[] originalNames = new String[files.length];
+        for (int i = 0; i < files.length; i++) {
+            tempFiles[i] = File.createTempFile("upload-", null);
+            files[i].transferTo(tempFiles[i]);
+            originalNames[i] = files[i].getOriginalFilename();
         }
+
+        List<String> urls = fileUploadService.saveFiles(user, tempFiles, originalNames);
+
+        for (File f : tempFiles) f.delete();
 
         return ResponseEntity.ok(urls);
     }
-
 
     // =============================
     // STREAM FILE
     // =============================
     @GetMapping("/meta/{fileKey}")
-    public void streamFile(@PathVariable String fileKey, HttpServletResponse response) throws IOException {
-        FileMetadata meta = metadataRepository.findByFileKey(fileKey).orElse(null);
-
-        if (meta == null) {
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-
-        String[] pathParts = meta.getRelativePath().split("/", 2);
-        String userId = pathParts[0];
-        String filename = pathParts[1];
-
-        Path filePath = storageService.getFilePath(userId, filename);
-
-        if (!Files.exists(filePath)) {
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            return;
-        }
-
-        response.setContentType(Files.probeContentType(filePath) != null
-                ? Files.probeContentType(filePath)
-                : "application/octet-stream");
-
-        response.setHeader("Content-Disposition", "inline; filename=\"" + meta.getFilename() + "\"");
-        response.setContentLengthLong(Files.size(filePath));
-        Files.copy(filePath, response.getOutputStream());
-        response.flushBuffer();
+    public void streamFile(
+            @PathVariable String fileKey,
+            @RequestParam(required = false) Integer w,
+            @RequestParam(required = false) Integer h,
+            @RequestParam(required = false) Integer q,
+            @RequestParam(required = false, defaultValue = "jpg") String format,
+            HttpServletResponse response
+    ) throws IOException {
+        fileStreamingService.streamFile(fileKey, w, h, q, format, response);
     }
+
+
 
     // =============================
     // LIST FILES
     // =============================
     @GetMapping("/my-files")
     public List<FileDTO> listFiles(@RequestParam(required = false) String apiKey, Authentication auth) {
-        User user = resolveUser(auth, apiKey);
-
-        return metadataRepository.findByUser(user).stream()
-                .map(f -> new FileDTO(
-                        f.getFilename(),
-                        f.getRelativePath(),
-                        f.getFileKey(),
-                        f.getUploadedAt()
-                ))
-                .toList();
+        User user = userResolverService.resolveUser(auth, apiKey);
+        return fileManagementService.listFiles(user);
     }
 
     // =============================
@@ -182,22 +102,15 @@ public class FileController {
                                              @RequestParam(required = false) String apiKey,
                                              Authentication auth) {
 
-        User user = resolveUser(auth, apiKey);
-        FileMetadata meta = metadataRepository.findByFileKey(fileKey).orElse(null);
-
-        if (meta == null)
-            return ResponseEntity.status(404).body("File not found");
-
-        if (!meta.getUser().getId().equals(user.getId()))
-            return ResponseEntity.status(403).body("Unauthorized");
+        User user = userResolverService.resolveUser(auth, apiKey);
 
         try {
-            String[] pathParts = meta.getRelativePath().split("/", 2);
-
-            storageService.deleteFile(pathParts[0], pathParts[1]);
-            metadataRepository.delete(meta);
-
-            return ResponseEntity.ok("File deleted");
+            String result = fileManagementService.deleteFile(user, fileKey);
+            return switch (result) {
+                case "OK" -> ResponseEntity.ok("File deleted");
+                case "UNAUTHORIZED" -> ResponseEntity.status(403).body("Unauthorized");
+                default -> ResponseEntity.status(404).body("File not found");
+            };
         } catch (IOException e) {
             return ResponseEntity.status(500).body("Delete failed");
         }

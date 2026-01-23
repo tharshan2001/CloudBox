@@ -1,4 +1,4 @@
-package File.Node.storage.utils;
+package File.Node.storage.utils.FileConvertor;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
