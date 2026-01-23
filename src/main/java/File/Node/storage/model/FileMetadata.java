@@ -9,7 +9,10 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
-@Table(name = "\"filedata\"")
+@Table(name = "\"filedata\"", indexes = {
+        @Index(name = "idx_file_key", columnList = "fileKey"),
+        @Index(name = "idx_user_id", columnList = "user_id")
+})
 public class FileMetadata {
 
     @Id
@@ -36,4 +39,5 @@ public class FileMetadata {
         this.uploadedAt = uploadedAt;
         this.user = user;
     }
+
 }

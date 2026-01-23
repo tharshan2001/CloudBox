@@ -1,7 +1,6 @@
 package File.Node.storage.utils.File;
 
 import File.Node.storage.model.FileMetadata;
-import File.Node.storage.repository.FileMetadataRepository;
 import File.Node.storage.service.FileStorageService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
@@ -22,21 +21,20 @@ import javax.imageio.stream.ImageOutputStream;
 public class FileStreamingService {
 
     private final FileStorageService storageService;
-    private final FileMetadataRepository metadataRepository;
+    private final FileMetadataService metadataService;
 
     public FileStreamingService(FileStorageService storageService,
-                                FileMetadataRepository metadataRepository) {
+                                FileMetadataService metadataService) {
         this.storageService = storageService;
-        this.metadataRepository = metadataRepository;
+        this.metadataService = metadataService;
     }
 
     /**
      * Streams a file with optional resizing and quality control.
-     * Example URL: /meta/{fileKey}?w=400&h=300&q=80&format=jpg
+     * URL example: /meta/{fileKey}?w=400&h=300&q=80&format=jpg
      */
-
     public void streamFile(String fileKey, Integer w, Integer h, Integer q, String format, HttpServletResponse response) throws IOException {
-        FileMetadata meta = metadataRepository.findByFileKey(fileKey).orElse(null);
+        FileMetadata meta = metadataService.getFileMetadata(fileKey);
         if (meta == null) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
@@ -59,6 +57,7 @@ public class FileStreamingService {
         if (contentType == null) contentType = "application/octet-stream";
 
         if (contentType.startsWith("image/")) {
+            // Image resizing
             BufferedImage originalImage = ImageIO.read(filePath.toFile());
             int originalWidth = originalImage.getWidth();
             int originalHeight = originalImage.getHeight();
@@ -67,21 +66,11 @@ public class FileStreamingService {
             if (h != null && w == null) w = (h * originalWidth) / originalHeight;
             if (w == null) { w = originalWidth; h = originalHeight; }
 
-            // Decide image type based on format
-            int imageType = "png".equalsIgnoreCase(format) ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
-            BufferedImage resizedImage = new BufferedImage(w, h, imageType);
-
+            BufferedImage resizedImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = resizedImage.createGraphics();
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            if ("jpg".equalsIgnoreCase(format)) {
-                // Fill background white to remove alpha
-                g.setColor(Color.WHITE);
-                g.fillRect(0, 0, w, h);
-            }
-
             g.drawImage(originalImage, 0, 0, w, h, null);
             g.dispose();
 
@@ -89,11 +78,11 @@ public class FileStreamingService {
             response.setHeader("Content-Disposition", "inline; filename=\"" + meta.getFilename() + "\"");
             addCacheHeaders(meta, response);
 
-            try (var ios = ImageIO.createImageOutputStream(response.getOutputStream())) {
-                var writer = ImageIO.getImageWritersByFormatName(format).next();
+            try (ImageOutputStream ios = ImageIO.createImageOutputStream(response.getOutputStream())) {
+                ImageWriter writer = ImageIO.getImageWritersByFormatName(format).next();
                 writer.setOutput(ios);
 
-                var param = writer.getDefaultWriteParam();
+                ImageWriteParam param = writer.getDefaultWriteParam();
                 if ("jpg".equalsIgnoreCase(format) && param.canWriteCompressed()) {
                     param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
                     param.setCompressionQuality(q / 100f);
@@ -105,7 +94,7 @@ public class FileStreamingService {
             }
 
         } else {
-            // Non-images → stream as-is
+            // Non-image files → stream as-is
             response.setContentType(contentType);
             response.setHeader("Content-Disposition", "inline; filename=\"" + meta.getFilename() + "\"");
             addCacheHeaders(meta, response);
@@ -113,9 +102,6 @@ public class FileStreamingService {
             response.flushBuffer();
         }
     }
-
-
-
 
     private void addCacheHeaders(FileMetadata meta, HttpServletResponse response) {
         response.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year
