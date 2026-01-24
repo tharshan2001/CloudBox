@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,20 +28,24 @@ public class FileUploadService {
     public List<String> saveFiles(Cube cube, User user, MultipartFile[] files) throws IOException {
         List<String> fileKeys = new ArrayList<>();
 
-        Path cubePath = Path.of("storage/cubes", String.valueOf(cube.getId()));
-        Files.createDirectories(cubePath);
-
         for (MultipartFile file : files) {
-            String ext = file.getOriginalFilename()
-                    .substring(file.getOriginalFilename().lastIndexOf("."));
+            String originalName = file.getOriginalFilename();
+            if (originalName == null) originalName = "unknown";
+
+            String ext = "";
+            int dotIndex = originalName.lastIndexOf(".");
+            if (dotIndex != -1) ext = originalName.substring(dotIndex);
+
             String fileKey = UUID.randomUUID().toString();
             String filename = fileKey + ext;
 
-            storageService.saveFile(file, String.valueOf(cube.getId()), filename);
+            // Save file under storage/userId/cubeId/filename
+            storageService.saveFile(file, user.getId(), cube.getId(), filename);
 
+            // Save metadata
             FileMetadata meta = new FileMetadata();
-            meta.setFilename(file.getOriginalFilename());
-            meta.setRelativePath(cube.getId() + "/" + filename);
+            meta.setFilename(originalName);
+            meta.setRelativePath(user.getId() + "/" + cube.getId() + "/" + filename);
             meta.setFileKey(fileKey);
             meta.setUploadedAt(LocalDateTime.now());
             meta.setUser(user);

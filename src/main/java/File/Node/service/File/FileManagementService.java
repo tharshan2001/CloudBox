@@ -30,13 +30,19 @@ public class FileManagementService {
         if (meta == null) return "NOT_FOUND";
         if (!meta.getUser().getId().equals(user.getId())) return "UNAUTHORIZED";
 
-        String[] parts = meta.getRelativePath().split("/", 2);
-        String cubeId = parts[0];
-        String filename = parts[1];
+        // Use Long IDs from metadata
+        Long userId = meta.getUser().getId();
+        Long cubeId = meta.getCube().getId();
+        String filename = fileKey + getExtension(meta.getFilename());
 
-        storageService.deleteFile(cubeId, filename);
+        storageService.deleteFile(userId, cubeId, filename);
         metadataRepository.delete(meta);
 
         return "OK";
+    }
+
+    private String getExtension(String filename) {
+        int dotIndex = filename.lastIndexOf('.');
+        return (dotIndex != -1) ? filename.substring(dotIndex) : "";
     }
 }

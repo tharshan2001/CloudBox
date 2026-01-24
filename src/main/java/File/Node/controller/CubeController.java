@@ -1,10 +1,14 @@
 package File.Node.controller;
 
 import File.Node.dto.CubeDTO;
+import File.Node.dto.FileDTO;
+import File.Node.dto.OwnerDTO;
 import File.Node.entity.Cube;
 import File.Node.entity.FileMetadata;
 import File.Node.entity.User;
-import File.Node.service.File.*;
+import File.Node.service.File.FileManagementService;
+import File.Node.service.File.FileStreamingService;
+import File.Node.service.File.FileUploadService;
 import File.Node.service.cube.CubeService;
 import File.Node.utils.user.UserResolverService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -53,25 +57,21 @@ public class CubeController {
 
         Cube cube = cubeService.createCube(name, description, user);
 
-        // Create folder for cube
-        Path cubePath = Path.of("storage", "cubes", cube.getId().toString());
+        // Create folder for cube: storage/userId/cubeId
+        Path cubePath = Path.of("storage", "users", String.valueOf(user.getId()), cube.getId().toString());
         Files.createDirectories(cubePath);
 
-        CubeDTO dto = new CubeDTO();
-        dto.setId(cube.getId());
-        dto.setName(cube.getName());
-        dto.setDescription(cube.getDescription());
-        dto.setApiKey(cube.getApiKey());
-        dto.setApiSecret(cube.getApiSecret());
-
+        CubeDTO dto = cubeService.toDTO(cube);
         return ResponseEntity.ok(dto);
     }
 
     // LIST USER CUBES
     @GetMapping
-    public List<Cube> listCubes(Authentication auth) {
+    public List<CubeDTO> listCubes(Authentication auth) {
         User user = userResolverService.resolveUser(auth, null);
-        return cubeService.listUserCubes(user);
+        return cubeService.listUserCubes(user).stream()
+                .map(cubeService::toDTO)
+                .toList();
     }
 
     // UPLOAD FILES TO CUBE
@@ -88,10 +88,21 @@ public class CubeController {
 
     // LIST FILES IN CUBE
     @GetMapping("/{cubeId}/files")
-    public List<FileMetadata> listFiles(@PathVariable Long cubeId, Authentication auth) {
+    public List<FileDTO> listFiles(@PathVariable Long cubeId, Authentication auth) {
         User user = userResolverService.resolveUser(auth, null);
         Cube cube = cubeService.getCubeEntity(cubeId, user);
-        return managementService.listFiles(cube);
+
+        return managementService.listFiles(cube).stream()
+                .map(f -> {
+                    FileDTO dto = new FileDTO();
+                    dto.setId(f.getId());
+                    dto.setFilename(f.getFilename());
+                    dto.setFileKey(f.getFileKey());
+                    dto.setRelativePath(f.getRelativePath());
+                    dto.setUploadedAt(f.getUploadedAt());
+                    return dto;
+                })
+                .toList();
     }
 
     // STREAM FILE BY FILEKEY

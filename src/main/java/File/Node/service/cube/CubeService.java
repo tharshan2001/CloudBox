@@ -1,5 +1,8 @@
 package File.Node.service.cube;
 
+import File.Node.dto.CubeDTO;
+import File.Node.dto.FileDTO;
+import File.Node.dto.OwnerDTO;
 import File.Node.entity.Cube;
 import File.Node.entity.User;
 import File.Node.repository.CubeRepository;
@@ -25,7 +28,7 @@ public class CubeService {
         this.managementService = managementService;
     }
 
-    // CREATE A NEW CUBE
+    // CREATE CUBE
     public Cube createCube(String name, String description, User owner) {
         Cube cube = new Cube();
         cube.setName(name);
@@ -38,29 +41,49 @@ public class CubeService {
         return cubeRepository.save(cube);
     }
 
-    // LIST ALL CUBES FOR A USER
+    // LIST USER CUBES
     public List<Cube> listUserCubes(User owner) {
         return cubeRepository.findByOwner(owner);
     }
 
-    // RETURN SDK-STYLE WRAPPER
-    public CubeWrapper getCube(Long cubeId, User owner) {
-        Cube cube = cubeRepository.findById(cubeId)
-                .filter(c -> c.getOwner().getId().equals(owner.getId()))
-                .orElseThrow(() -> new RuntimeException("Cube not found or unauthorized"));
-        return new CubeWrapper(cube, owner, uploadService, managementService);
-    }
-
-    // RETURN RAW CUBE ENTITY (needed for uploads, list)
+    // GET RAW ENTITY
     public Cube getCubeEntity(Long cubeId, User owner) {
         return cubeRepository.findById(cubeId)
                 .filter(c -> c.getOwner().getId().equals(owner.getId()))
                 .orElseThrow(() -> new RuntimeException("Cube not found or unauthorized"));
     }
 
-    // FIND CUBE BY API KEY
+    // FIND BY API KEY
     public Cube getCubeByApiKey(String apiKey) {
         return cubeRepository.findByApiKey(apiKey)
                 .orElseThrow(() -> new RuntimeException("Cube not found for API key"));
+    }
+
+    // CONVERT TO DTO
+    public CubeDTO toDTO(Cube cube) {
+        CubeDTO dto = new CubeDTO();
+        dto.setId(cube.getId());
+        dto.setName(cube.getName());
+        dto.setDescription(cube.getDescription());
+        dto.setApiKey(cube.getApiKey());
+        dto.setApiSecret(cube.getApiSecret());
+
+        OwnerDTO ownerDTO = new OwnerDTO();
+        ownerDTO.setId(cube.getOwner().getId());
+        ownerDTO.setName(cube.getOwner().getName());
+        ownerDTO.setEmail(cube.getOwner().getEmail());
+        dto.setOwner(ownerDTO);
+
+        dto.setFiles(cube.getFiles().stream().map(f -> {
+            FileDTO fDto = new FileDTO();
+            fDto.setId(f.getId());
+            fDto.setFilename(f.getFilename());
+            fDto.setFileKey(f.getFileKey());
+            fDto.setRelativePath(f.getRelativePath());
+            fDto.setUploadedAt(f.getUploadedAt());
+            return fDto;
+        }).toList());
+
+        return dto;
     }
 }

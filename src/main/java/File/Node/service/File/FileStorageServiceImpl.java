@@ -18,20 +18,21 @@ public class FileStorageServiceImpl implements FileStorageService {
     }
 
     @Override
-    public void saveFile(MultipartFile file, String container, String filename) throws IOException {
-        Path containerFolder = storagePath.resolve(container);
-        Files.createDirectories(containerFolder);
-        Path destination = containerFolder.resolve(filename);
-        Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+    public void saveFile(MultipartFile file, Long userId, Long cubeId, String filename) throws IOException {
+        Path folder = storagePath.resolve(userId.toString()).resolve(cubeId.toString());
+        Files.createDirectories(folder);
+        Files.copy(file.getInputStream(), folder.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
     }
 
     @Override
-    public Path getFilePath(String container, String filename) {
-        return storagePath.resolve(container).resolve(filename);
+    public Path getFilePath(Long userId, Long cubeId, String filename) {
+        return storagePath.resolve(userId.toString())
+                .resolve(cubeId.toString())
+                .resolve(filename);
     }
 
     @Override
-    public void deleteFile(String container, String filename) throws IOException {
-        Files.deleteIfExists(getFilePath(container, filename));
+    public void deleteFile(Long userId, Long cubeId, String filename) throws IOException {
+        Files.deleteIfExists(getFilePath(userId, cubeId, filename));
     }
 }

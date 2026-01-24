@@ -27,8 +27,12 @@ public class FileStreamingService {
             return;
         }
 
-        String[] pathParts = meta.getRelativePath().split("/", 2);
-        Path filePath = storageService.getFilePath(pathParts[0], pathParts[1]);
+        Path filePath = storageService.getFilePath(
+                meta.getUser().getId(),
+                meta.getCube().getId(),
+                fileKey + getExtension(meta.getFilename())
+        );
+
         if (!Files.exists(filePath)) {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return;
@@ -41,5 +45,10 @@ public class FileStreamingService {
         response.setHeader("Content-Disposition", "inline; filename=\"" + meta.getFilename() + "\"");
         Files.copy(filePath, response.getOutputStream());
         response.flushBuffer();
+    }
+
+    private String getExtension(String filename) {
+        int dotIndex = filename.lastIndexOf('.');
+        return (dotIndex != -1) ? filename.substring(dotIndex) : "";
     }
 }

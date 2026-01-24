@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -30,5 +31,5 @@ public class Cube {
     private User owner;
 
     @OneToMany(mappedBy = "cube", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FileMetadata> files;
+    private List<FileMetadata> files = new ArrayList<>();
 }
