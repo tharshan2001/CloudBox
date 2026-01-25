@@ -35,4 +35,27 @@ public class FileStorageServiceImpl implements FileStorageService {
     public void deleteFile(Long userId, Long cubeId, String filename) throws IOException {
         Files.deleteIfExists(getFilePath(userId, cubeId, filename));
     }
+
+    public Path getCachedImagePath(
+            String fileKey,
+            Integer width,
+            Integer height,
+            Integer quality,
+            String format
+    ) {
+        String cacheDir = "cache/images";
+        String fileName = fileKey +
+                "_w" + (width != null ? width : "auto") +
+                "_h" + (height != null ? height : "auto") +
+                "_q" + (quality != null ? quality : "auto") +
+                "." + format;
+
+        Path path = Path.of(cacheDir, fileName);
+        try {
+            Files.createDirectories(path.getParent());
+        } catch (IOException ignored) {}
+
+        return path;
+    }
+
 }
