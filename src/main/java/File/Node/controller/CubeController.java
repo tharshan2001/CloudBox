@@ -1,11 +1,15 @@
 package File.Node.controller;
 
-import File.Node.entity.Cube;
+import File.Node.dto.CreateCubeRequest;
+import File.Node.dto.CubeDTO;
+import File.Node.dto.CubeInfoDTO;
 import File.Node.entity.User;
+import File.Node.security.CurrentUser;
 import File.Node.service.cube.CubeService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/cubes")
@@ -17,42 +21,37 @@ public class CubeController {
         this.cubeService = cubeService;
     }
 
-    // ✅ CREATE CUBE
+    // ============================
+    // CREATE CUBE
+    // ============================
     @PostMapping
-    public ResponseEntity<?> createCube(
-            @RequestParam String name,
-            @RequestParam(required = false) String description,
-            Authentication auth
+    public ResponseEntity<CubeDTO> createCube(
+            @RequestBody CreateCubeRequest request,
+            @CurrentUser User user
     ) {
-        User user = (User) auth.getPrincipal();
         return ResponseEntity.ok(
-                cubeService.createCube(name, description, user)
+                cubeService.createCube(request.getName(), request.getDescription(), user)
         );
     }
 
-    // ✅ LIST CUBES
+    // ============================
+    // LIST ALL USER CUBES
+    // ============================
     @GetMapping
-    public ResponseEntity<?> listCubes(Authentication auth) {
-        User user = (User) auth.getPrincipal();
-        return ResponseEntity.ok(
-                cubeService.listUserCubes(user)
-                        .stream()
-                        .map(c -> cubeService.toDTO(c, null))
-                        .toList()
-        );
+    public ResponseEntity<List<CubeInfoDTO>> listUserCubes(@CurrentUser User user) {
+        List<CubeInfoDTO> cubes = cubeService.listUserCubesInfo(user);
+        return ResponseEntity.ok(cubes);
     }
 
-    // ✅ REGENERATE SECRET (THIS WAS MISSING / WRONG)
-    @PostMapping("/{cubeId}/secret")
-    public ResponseEntity<String> regenerateSecret(
-            @PathVariable Long cubeId,
-            Authentication auth
+    // ============================
+    // GET CUBE INFO BY NAME
+    // ============================
+    @GetMapping("/{cubeName}")
+    public ResponseEntity<CubeInfoDTO> getCubeInfo(
+            @PathVariable String cubeName,
+            @CurrentUser User user
     ) {
-        User user = (User) auth.getPrincipal();
-
-        Cube cube = cubeService.getCubeEntity(cubeId, user);
-        String newSecret = cubeService.regenerateSecret(cube);
-
-        return ResponseEntity.ok(newSecret);
+        CubeInfoDTO cubeInfo = cubeService.getCubeInfoByNameForUser(cubeName, user);
+        return ResponseEntity.ok(cubeInfo);
     }
 }

@@ -1,22 +1,18 @@
 package File.Node.dto;
 
-public class CubeDTO {
+public class CubeInfoDTO {
     private String name;
     private String description;
     private String apiKey;
-    private String apiSecret;
 
-    public CubeDTO() {} // existing no-args constructor
+    public CubeInfoDTO() {}
 
-    // ✅ Add this constructor
-    public CubeDTO(String name, String description, String apiKey, String apiSecret) {
+    public CubeInfoDTO(String name, String description, String apiKey) {
         this.name = name;
         this.description = description;
         this.apiKey = apiKey;
-        this.apiSecret = apiSecret;
     }
 
-    // getters and setters...
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -25,7 +21,4 @@ public class CubeDTO {
 
     public String getApiKey() { return apiKey; }
     public void setApiKey(String apiKey) { this.apiKey = apiKey; }
-
-    public String getApiSecret() { return apiSecret; }
-    public void setApiSecret(String apiSecret) { this.apiSecret = apiSecret; }
 }

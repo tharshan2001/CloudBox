@@ -17,32 +17,55 @@ public class CubeWrapper {
     private final FileUploadService uploadService;
     private final FileManagementService managementService;
 
-    public CubeWrapper(Cube cube, User owner,
-                       FileUploadService uploadService,
-                       FileManagementService managementService) {
+    public CubeWrapper(
+            Cube cube,
+            User owner,
+            FileUploadService uploadService,
+            FileManagementService managementService
+    ) {
         this.cube = cube;
         this.owner = owner;
         this.uploadService = uploadService;
         this.managementService = managementService;
     }
 
-    public Long getId() { return cube.getId(); }
-    public String getName() { return cube.getName(); }
-    public String getDescription() { return cube.getDescription(); }
-    public String getApiKey() { return cube.getApiKey(); }
-    public String getApiSecret() { return cube.getApiSecret(); }
-
-    // Upload files to this cube
-    public List<String> add(MultipartFile[] files) throws IOException, InterruptedException {
-        return uploadService.saveFiles(cube, owner, files);
+    public Long getId() {
+        return cube.getId();
     }
 
-    // List files in this cube
+    public String getName() {
+        return cube.getName();
+    }
+
+    public String getDescription() {
+        return cube.getDescription();
+    }
+
+    public String getApiKey() {
+        return cube.getApiKey();
+    }
+
+    public String getApiSecret() {
+        return cube.getApiSecret();
+    }
+
+    // ============================
+    // UPLOAD SINGLE FILE
+    // ============================
+    public String add(MultipartFile file) throws IOException {
+        return uploadService.saveFile(cube, owner, file);
+    }
+
+    // ============================
+    // LIST FILES
+    // ============================
     public List<FileMetadata> listFiles() {
         return managementService.listFiles(cube);
     }
 
-    // Delete a file
+    // ============================
+    // DELETE FILE
+    // ============================
     public String delete(String fileKey) throws IOException {
         return managementService.deleteFile(owner, fileKey);
     }
