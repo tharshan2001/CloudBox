@@ -1,6 +1,7 @@
 package File.Node.controller;
 
 import File.Node.dto.FileDTO;
+import File.Node.dto.ResponseWrapper;
 import File.Node.entity.Cube;
 import File.Node.entity.User;
 import File.Node.security.CurrentUser;
@@ -39,54 +40,56 @@ public class FileController {
     }
 
     // ============================
-    // UPLOAD SINGLE FILE BY CUBE NAME OR API KEY
+    // UPLOAD SINGLE FILE
     // ============================
-    @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    public ResponseEntity<String> uploadFile(
-            @RequestParam(required = false) String cubeName,
-            @RequestParam(required = false) String apiKey,
+    @PostMapping(
+            value = "/{cubeName}",
+            consumes = "multipart/form-data"
+    )
+    public ResponseEntity<ResponseWrapper<String>> uploadFile(
+            @PathVariable String cubeName,
             @RequestPart("file") MultipartFile file,
             @CurrentUser User user
-    ) throws IOException {
+    ) {
+        try {
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new ResponseWrapper<>(false, "File is missing", null));
+            }
 
-        if (file == null || file.isEmpty()) {
-            return ResponseEntity.badRequest().body("File is missing");
+            // fetch cube by name + user
+            Cube cube = cubeService.getCubeByNameForUser(cubeName, user);
+
+            String fileKey = uploadService.saveFile(cube, user, file);
+
+            return ResponseEntity.ok(
+                    new ResponseWrapper<>(true, "File uploaded successfully", fileKey)
+            );
+
+        } catch (RuntimeException ex) {
+            // Handles cases like cube not found or unauthorized
+            return ResponseEntity.status(404)
+                    .body(new ResponseWrapper<>(false, ex.getMessage(), null));
+
+        } catch (IOException ex) {
+            return ResponseEntity.status(500)
+                    .body(new ResponseWrapper<>(false, "Error saving file: " + ex.getMessage(), null));
+        } catch (Exception ex) {
+            return ResponseEntity.status(500)
+                    .body(new ResponseWrapper<>(false, "Unexpected error occurred", null));
         }
-
-        Cube cube;
-
-        if (apiKey != null && !apiKey.isEmpty()) {
-            cube = cubeService.getCubeByApiKeyForUser(apiKey, user);
-        } else if (cubeName != null && !cubeName.isEmpty()) {
-            cube = cubeService.getCubeByNameForUser(cubeName, user);
-        } else {
-            return ResponseEntity.badRequest().body("Either cubeName or apiKey must be provided");
-        }
-
-        // Save file using cube ID internally to avoid conflicts
-        String fileKey = uploadService.saveFile(cube, user, file);
-
-        return ResponseEntity.ok(fileKey);
     }
 
+
     // ============================
-    // LIST FILES BY CUBE NAME OR API KEY
+    // LIST FILES
     // ============================
-    @GetMapping("/list")
+    @GetMapping("/{cubeName}")
     public ResponseEntity<List<FileDTO>> listFiles(
-            @RequestParam(required = false) String cubeName,
-            @RequestParam(required = false) String apiKey,
+            @PathVariable String cubeName,
             @CurrentUser User user
     ) {
-        Cube cube;
-
-        if (apiKey != null && !apiKey.isEmpty()) {
-            cube = cubeService.getCubeByApiKeyForUser(apiKey, user);
-        } else if (cubeName != null && !cubeName.isEmpty()) {
-            cube = cubeService.getCubeByNameForUser(cubeName, user);
-        } else {
-            return ResponseEntity.badRequest().build();
-        }
+        Cube cube = cubeService.getCubeByNameForUser(cubeName, user);
 
         List<FileDTO> files = managementService.listFiles(cube)
                 .stream()
@@ -115,17 +118,25 @@ public class FileController {
             HttpServletRequest request,
             HttpServletResponse response
     ) throws IOException {
-        streamingService.streamFile(fileKey, w, h, q, format, request, response);
+
+        streamingService.streamFile(
+                fileKey,
+                w,
+                h,
+                q,
+                format,
+                request,
+                response
+        );
     }
 
-    // ============================
     // DELETE FILE
-    // ============================
     @DeleteMapping("/meta/{fileKey}")
     public ResponseEntity<String> deleteFile(
             @PathVariable String fileKey,
             @CurrentUser User user
     ) throws IOException {
+
         String result = managementService.deleteFile(user, fileKey);
 
         return switch (result) {

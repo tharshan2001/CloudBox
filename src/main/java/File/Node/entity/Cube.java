@@ -10,10 +10,15 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
-@Table(name = "cubes", indexes = {
-        @Index(name = "idx_owner_id", columnList = "owner_id"),
-        @Index(name = "idx_api_key", columnList = "apiKey", unique = true)
-})
+@Table(
+        name = "cubes",
+        indexes = {
+                @Index(name = "idx_owner_id", columnList = "owner_id") // speed up queries by owner
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_owner_name", columnNames = {"owner_id", "name"}) // unique per user
+        }
+)
 public class Cube {
 
     @Id

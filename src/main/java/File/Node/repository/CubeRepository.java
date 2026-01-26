@@ -16,21 +16,21 @@ public interface CubeRepository extends JpaRepository<Cube, Long> {
     Optional<Cube> findByApiKey(String apiKey);
 
     @Query("""
-        SELECT c FROM Cube c
-        JOIN FETCH c.owner
-        WHERE c.apiKey = :apiKey
-    """)
+                SELECT c FROM Cube c
+                JOIN FETCH c.owner
+                WHERE c.apiKey = :apiKey
+            """)
     Optional<Cube> findByApiKeyWithOwner(@Param("apiKey") String apiKey);
 
-    // ==========================
     // NEW: Find by name and owner
-    // ==========================
     Optional<Cube> findByNameAndOwner(String name, User owner);
 
     @Query("""
-        SELECT c FROM Cube c
-        JOIN FETCH c.owner
-        WHERE c.name = :name AND c.owner = :owner
-    """)
+                SELECT c FROM Cube c
+                JOIN FETCH c.owner
+                WHERE c.name = :name AND c.owner = :owner
+            """)
     Optional<Cube> findByNameAndUser(@Param("name") String name, @Param("owner") User owner);
+
+    boolean existsByNameAndOwner(String name, User owner);
 }

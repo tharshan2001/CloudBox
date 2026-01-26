@@ -7,6 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @AllArgsConstructor
-public class ApiKeyRes {
-    private String apiKey;
+public class ResponseWrapper<T> {
+    private boolean success;
+    private String message;
+    private T data;
 }

@@ -23,8 +23,12 @@ public class CubeService {
         this.secretUtil = secretUtil;
     }
 
-    // CREATE CUBE
     public CubeDTO createCube(String name, String description, User owner) {
+        // Check if the user already has a cube with this name
+        if (cubeRepository.existsByNameAndOwner(name, owner)) {
+            throw new IllegalArgumentException("Cube with this name already exists for this user");
+        }
+
         Cube cube = new Cube();
         cube.setName(name);
         cube.setDescription(description);
@@ -82,4 +86,15 @@ public class CubeService {
         cubeRepository.save(cube);
         return rawSecret;
     }
+
+    // GET CUBE BY USERNAME + API KEY + API SECRET
+    public Cube getCubeByApiKeyAndSecret(String username, String apiKey, String apiSecret) {
+        return cubeRepository.findByApiKey(apiKey)
+                .filter(cube ->
+                        cube.getOwner().getUsername().equals(username) &&
+                                secretUtil.matches(apiSecret, cube.getApiSecret())
+                )
+                .orElseThrow(() -> new RuntimeException("Invalid cube credentials or unauthorized"));
+    }
+
 }
