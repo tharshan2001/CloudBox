@@ -32,14 +32,17 @@ public class CubeWrapper {
     public String getApiKey() { return cube.getApiKey(); }
     public String getApiSecret() { return cube.getApiSecret(); }
 
+    // Upload files to this cube
     public List<String> add(MultipartFile[] files) throws IOException, InterruptedException {
         return uploadService.saveFiles(cube, owner, files);
     }
 
+    // List files in this cube
     public List<FileMetadata> listFiles() {
         return managementService.listFiles(cube);
     }
 
+    // Delete a file
     public String delete(String fileKey) throws IOException {
         return managementService.deleteFile(owner, fileKey);
     }

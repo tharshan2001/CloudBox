@@ -5,129 +5,83 @@ import File.Node.dto.LoginRequest;
 import File.Node.dto.RegisterRequest;
 import File.Node.entity.User;
 import File.Node.repository.UserRepository;
+import File.Node.security.CurrentUser;
 import File.Node.security.JwtUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import File.Node.dto.UserResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    // =============================
-    // REGISTER
-    // =============================
     @PostMapping("/register")
     public ResponseEntity<ApiResponse> register(@RequestBody RegisterRequest request) {
-
-        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(new ApiResponse("Email already exists"));
+        if (userRepository.existsByEmail(request.getEmail())) {
+            return ResponseEntity.badRequest().body(new ApiResponse("Email already exists"));
+        }
+        if (userRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.badRequest().body(new ApiResponse("Username already taken"));
         }
 
-        // Hash password
-        String hashedPassword = passwordEncoder.encode(request.getPassword());
-        User user = new User(request.getName(), request.getEmail(), hashedPassword);
+        User user = new User(request.getUsername(), request.getName(), request.getEmail(), passwordEncoder.encode(request.getPassword()));
+
         userRepository.save(user);
-
-        return ResponseEntity.ok(new ApiResponse("Registered successfully!"));
+        return ResponseEntity.ok(new ApiResponse("Registered successfully"));
     }
 
-    // =============================
-    // LOGIN → issues JWT cookie
-    // =============================
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse> login(@RequestBody LoginRequest request,
-                                             HttpServletResponse response) {
+    public ResponseEntity<ApiResponse> login(@RequestBody LoginRequest request, HttpServletResponse response) {
 
-        return userRepository.findByEmail(request.getEmail())
-                .filter(u -> passwordEncoder.matches(request.getPassword(), u.getPassword()))
-                .map(u -> {
-                    String token = jwtUtil.generateToken(u.getEmail());
+        String identifier = request.getIdentifier(); // username or email
 
-                    Cookie cookie = new Cookie("CLOUDBOX_TOKEN", token);
-                    cookie.setHttpOnly(true);
-                    cookie.setSecure(false); // true if HTTPS
-                    cookie.setPath("/");
-                    cookie.setMaxAge(24 * 60 * 60); // 1 day
-                    response.addCookie(cookie);
+        User user = userRepository.findByUsername(identifier).or(() -> userRepository.findByEmail(identifier)).orElse(null);
 
-                    return ResponseEntity.ok(new ApiResponse("Login successful!"));
-                })
-                .orElse(ResponseEntity.status(401)
-                        .body(new ApiResponse("Invalid credentials")));
+        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            return ResponseEntity.status(401).body(new ApiResponse("Invalid credentials"));
+        }
+
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        Cookie cookie = new Cookie("FILENODE_TOKEN", token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // true if HTTPS
+        cookie.setPath("/");
+        cookie.setMaxAge(24 * 60 * 60);
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok(new ApiResponse("Login successful"));
     }
 
-    // =============================
-    // LOGOUT → removes cookie
-    // =============================
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse> logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("CLOUDBOX_TOKEN", null);
+        Cookie cookie = new Cookie("FILENODE_TOKEN", null);
         cookie.setHttpOnly(true);
         cookie.setPath("/");
         cookie.setMaxAge(0);
         response.addCookie(cookie);
-        return ResponseEntity.ok(new ApiResponse("Logged out successfully"));
+        return ResponseEntity.ok(new ApiResponse("Logged out"));
     }
 
-    // =============================
-    // GET API KEY → secure, only for authenticated users
-    // =============================
-    @GetMapping("/my-apikey")
-    public ResponseEntity<ApiResponse> getApiKey(Authentication auth) {
-        if (auth == null || auth.getName() == null) {
-            return ResponseEntity.status(401).body(new ApiResponse("Unauthorized"));
-        }
-
-        User user = userRepository.findByEmail(auth.getName())
-                .orElse(null);
-
-        if (user == null) {
-            return ResponseEntity.status(404).body(new ApiResponse("User not found"));
-        }
-
-        // Return API key in JSON
-        return ResponseEntity.ok(new ApiResponse(user.getApiKey()));
-    }
-
-
-    // =============================
-    // GET CURRENT USER → auth/me
-    // =============================
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(Authentication auth) {
-        if (auth == null || auth.getName() == null) {
-            return ResponseEntity.status(401).body(new ApiResponse("Unauthorized"));
-        }
-
-        User user = userRepository.findByEmail(auth.getName())
-                .orElse(null);
-
+    public ResponseEntity<UserResponse> me(@CurrentUser User user) {
         if (user == null) {
-            return ResponseEntity.status(404).body(new ApiResponse("User not found"));
+            return ResponseEntity.status(401).build();
         }
 
-        // Return user info (excluding password)
-        return ResponseEntity.ok(new ApiResponse(
-                "id: " + user.getId() +
-                        ", name: " + user.getName() +
-                        ", email: " + user.getEmail() +
-                        ", apiKey: " + user.getApiKey()
-        ));
+        UserResponse userResponse = new UserResponse(user.getUsername(), user.getName(), user.getEmail());
+
+        return ResponseEntity.ok(userResponse);
     }
+
+
 }

@@ -1,6 +1,6 @@
-# MiniStreamBox
+# NodeStream
 
-**MiniStreamBox** – Lightweight media handling & streaming system.
+**NodeStream** – Lightweight media handling & streaming system.
 
 A self-hosted Java/Spring Boot application for uploading, storing, streaming, and converting media files with per-user isolation and flexible image/video optimization. Ideal for experimentation, prototyping, or small-scale personal use.
 
@@ -49,7 +49,7 @@ A self-hosted Java/Spring Boot application for uploading, storing, streaming, an
  - ./mvnw clean install
  - ./mvnw spring-boot:run
  
-## ⚙️Configuration
+## ⚙️ Configuration
 ### Authentication
 - **POST** `/auth/register` – Register a new user
 - **POST** `/auth/login` – Login and receive JWT token

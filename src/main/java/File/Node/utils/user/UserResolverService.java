@@ -1,42 +1,44 @@
 package File.Node.utils.user;
 
+import File.Node.entity.Cube;
 import File.Node.entity.User;
-import File.Node.repository.UserRepository;
+import File.Node.repository.CubeRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserResolverService {
 
-    private final UserRepository userRepository;
+    private final CubeRepository cubeRepository;
 
-    public UserResolverService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public UserResolverService(CubeRepository cubeRepository) {
+        this.cubeRepository = cubeRepository;
     }
 
     /**
-     * Resolves a User entity from either a JWT-provided Authentication or an API key.
+     * Resolves a User entity based on either JWT authentication or Cube API key.
      *
      * @param auth   the Spring Security Authentication object (from JWT)
-     * @param apiKey optional API key (can be null)
-     * @return User entity
+     * @param cubeApiKey optional API key for cube access
+     * @return User entity owning the cube or authenticated user
      * @throws RuntimeException if no valid user is found
      */
-    public User resolveUser(Authentication auth, String apiKey) {
+    public User resolveUser(Authentication auth, String cubeApiKey) {
 
-        // First, try API key if provided
-        if (apiKey != null && !apiKey.isBlank()) {
-            return userRepository.findByApiKey(apiKey)
-                    .orElseThrow(() -> new RuntimeException("Invalid API key"));
+        // 1️⃣ If Cube API key is provided, find cube and return its owner
+        if (cubeApiKey != null && !cubeApiKey.isBlank()) {
+            Cube cube = cubeRepository.findByApiKey(cubeApiKey)
+                    .orElseThrow(() -> new RuntimeException("Invalid Cube API key"));
+            return cube.getOwner();
         }
 
-        // Then try authentication
+        // 2️⃣ Otherwise, resolve via authenticated user
         if (auth != null && auth.isAuthenticated() && auth.getName() != null) {
-            return userRepository.findByEmail(auth.getName())
-                    .orElseThrow(() -> new RuntimeException("User not found for email: " + auth.getName()));
+            // Assuming login via username OR email
+            throw new RuntimeException("Authentication-based user resolution not implemented yet. Use cube API key instead.");
         }
 
-        // Neither API key nor authentication worked
-        throw new RuntimeException("Authentication required");
+        // 3️⃣ Neither worked
+        throw new RuntimeException("Authentication or Cube API key required");
     }
 }

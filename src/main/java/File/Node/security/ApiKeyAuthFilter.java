@@ -1,7 +1,8 @@
 package File.Node.security;
 
+import File.Node.entity.Cube;
 import File.Node.entity.User;
-import File.Node.repository.UserRepository;
+import File.Node.repository.CubeRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,38 +13,43 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collections;
 
 @Component
 public class ApiKeyAuthFilter extends OncePerRequestFilter {
 
-    private final UserRepository userRepository;
+    private final CubeRepository cubeRepository;
 
-    public ApiKeyAuthFilter(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public ApiKeyAuthFilter(CubeRepository cubeRepository) {
+        this.cubeRepository = cubeRepository;
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
 
-        // Check API key in query parameter or header
-        String apiKey = request.getParameter("apiKey");
-        if (apiKey == null) {
-            apiKey = request.getHeader("X-API-KEY");
-        }
+        String apiKey = request.getHeader("X-API-KEY");
 
+        // Only try auth if header is present and not already authenticated
         if (apiKey != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userRepository.findByApiKey(apiKey).orElse(null);
-            if (user != null) {
-                // Authenticate user with email as principal
+
+            // Load cube + owner in one query to avoid LazyInitializationException
+            Cube cube = cubeRepository.findByApiKeyWithOwner(apiKey).orElse(null);
+
+            if (cube != null && cube.getOwner() != null) {
+                User user = cube.getOwner();
+
+                // Create an authentication token with the full User object
                 UsernamePasswordAuthenticationToken auth =
                         new UsernamePasswordAuthenticationToken(
-                                user.getEmail(), // use email instead of username
+                                user,
                                 null,
-                                null // no roles for now
+                                Collections.emptyList() // authorities, you can add roles if needed
                         );
+
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }

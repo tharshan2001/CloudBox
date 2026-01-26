@@ -3,48 +3,48 @@ package File.Node.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.List;
 import java.util.ArrayList;
-import java.util.UUID;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "\"user\"")
-public class User {
+@Table(name = "users")
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name; // replaced username with name
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    private String name;
 
     @Column(unique = true, nullable = false)
-    private String email; // new email field, required and unique
+    private String email;
 
     private String password;
-    private String apiKey;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
     private List<FileMetadata> files = new ArrayList<>();
 
-    public User() {
-        this.apiKey = UUID.randomUUID().toString(); // always generate
-    }
+    public User() {}
 
-    public User(String name, String email, String password) {
+    public User(String username, String name, String email, String password) {
+        this.username = username;
         this.name = name;
         this.email = email;
         this.password = password;
-        this.apiKey = UUID.randomUUID().toString();
-    }
-
-    @PrePersist
-    public void prePersist() {
-        if (this.apiKey == null || this.apiKey.isEmpty()) {
-            this.apiKey = UUID.randomUUID().toString();
-        }
     }
 
     public void addFile(FileMetadata file) {
@@ -56,4 +56,34 @@ public class User {
         files.remove(file);
         file.setUser(null);
     }
+
+    // =============================
+    // UserDetails implementation
+    // =============================
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(); // empty for now
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String getUsername() {
+        return email; // principal = email
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() { return true; }
 }
