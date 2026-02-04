@@ -1,7 +1,8 @@
-package File.Node.security;
+package File.Node.security.filter;
 
 import File.Node.entity.User;
 import File.Node.repository.UserRepository;
+import File.Node.security.utils.JwtUtil;
 import io.micrometer.common.lang.NonNullApi;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -29,6 +30,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
+
+
+        if (request.getMethod().equalsIgnoreCase("OPTIONS")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
 
         String token = null;
 

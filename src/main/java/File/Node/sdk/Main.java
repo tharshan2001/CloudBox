@@ -1,6 +1,6 @@
 package File.Node.sdk;
 
-import File.Node.dto.FileDTO;
+import File.Node.dto.file.FileDTO;
 
 import java.io.File;
 import java.util.List;

@@ -1,11 +1,11 @@
 package File.Node.service.cube;
 
-import File.Node.dto.CubeDTO;
-import File.Node.dto.CubeInfoDTO;
+import File.Node.dto.cube.CubeDTO;
+import File.Node.dto.cube.CubeInfoDTO;
 import File.Node.entity.Cube;
 import File.Node.entity.User;
 import File.Node.repository.CubeRepository;
-import File.Node.security.CubeApiSecretUtil;
+import File.Node.security.utils.CubeApiSecretUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

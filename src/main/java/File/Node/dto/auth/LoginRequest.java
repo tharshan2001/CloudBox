@@ -1,4 +1,4 @@
-package File.Node.dto;
+package File.Node.dto.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

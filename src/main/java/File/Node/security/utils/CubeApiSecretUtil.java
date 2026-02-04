@@ -1,4 +1,4 @@
-package File.Node.security;
+package File.Node.security.utils;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;

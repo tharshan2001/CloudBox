@@ -1,14 +1,14 @@
-package File.Node.dto;
+package File.Node.dto.auth;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class RegisterRequest {
-
+@AllArgsConstructor
+public class UserResponse {
     private String username;
     private String name;
     private String email;
-    private String password;
 }

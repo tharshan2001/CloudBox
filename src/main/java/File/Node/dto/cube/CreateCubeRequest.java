@@ -1,4 +1,4 @@
-package File.Node.dto;
+package File.Node.dto.cube;
 
 
 import lombok.Data;

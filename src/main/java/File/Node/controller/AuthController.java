@@ -1,17 +1,17 @@
 package File.Node.controller;
 
-import File.Node.dto.ApiResponse;
-import File.Node.dto.LoginRequest;
-import File.Node.dto.RegisterRequest;
+import File.Node.dto.cube.ApiResponse;
+import File.Node.dto.auth.LoginRequest;
+import File.Node.dto.auth.RegisterRequest;
 import File.Node.entity.User;
 import File.Node.repository.UserRepository;
-import File.Node.security.CurrentUser;
-import File.Node.security.JwtUtil;
+import File.Node.security.utils.CurrentUser;
+import File.Node.security.utils.JwtUtil;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import File.Node.dto.UserResponse;
+import File.Node.dto.auth.UserResponse;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 

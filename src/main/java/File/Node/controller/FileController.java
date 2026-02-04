@@ -1,10 +1,10 @@
 package File.Node.controller;
 
-import File.Node.dto.FileDTO;
-import File.Node.dto.ResponseWrapper;
+import File.Node.dto.file.FileDTO;
+import File.Node.dto.file.ResponseWrapper;
 import File.Node.entity.Cube;
 import File.Node.entity.User;
-import File.Node.security.CurrentUser;
+import File.Node.security.utils.CurrentUser;
 import File.Node.service.File.FileManagementService;
 import File.Node.service.File.FileStreamingService;
 import File.Node.service.File.FileUploadService;
